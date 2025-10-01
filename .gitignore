@@ -1,45 +1,76 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# Flutter / Dart / Pub related
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
-
-# Symbolication related
+coverage/
+gen/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+# Symbolication / Obfuscation
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
-
-# Android Studio will place build artifacts here
+# IDE / Editors
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+# VS Code (si tu veux garder tes réglages persos, commente cette ligne)
+.vscode/
+.history/
+# Atom
+.atom/
+# Platform specifics
+# Android
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/key.properties
+android/app/google-services.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# iOS / Xcode
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/.idea/
+ios/Runner/GeneratedPluginRegistrant.*
+# macOS
+macos/Flutter/Flutter-Debug.xcconfig
+macos/Flutter/Flutter-Release.xcconfig
+macos/Flutter/GeneratedPluginRegistrant.swift
+macos/Pods/
+macos/.symlinks/
+macos/Flutter/ephemeral/
+# Windows
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/flutter/generated_plugins.cmake
+windows/ephemeral/
+# Linux
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+linux/flutter/generated_plugins.cmake
+linux/ephemeral/
+# Web
+web/.dart_tool/
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+*.tmp
+*.lock
+.DS_Store
+.svn/
+.swiftpm/
+migrate_working_dir/

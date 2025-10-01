@@ -1,16 +1,23 @@
-# lampe_aube_app
+# Lampe Aube – Application Flutter
 
-A new Flutter project.
+Application mobile Flutter pour piloter une **lampe connectée intelligente** (projet Systèmes Embarqués / IoT).
 
-## Getting Started
+## Fonctionnalités prévues
+- Simulation de lever du soleil (réveil progressif).
+- Modes prédéfinis : Lecture / Relax / Nuit.
+- Éclairage adaptatif via capteur de luminosité.
+- Suivi des données capteurs (Température, Humidité, Luminosité).
+- Pilotage manuel (on/off, intensité, couleur).
+- Multi-utilisateurs / multi-lampes via API + stockage serveur.
 
-This project is a starting point for a Flutter application.
+## Installation & lancement
 
-A few resources to get you started if this is your first Flutter project:
+### 1. Pré-requis
+- [Flutter SDK](https://docs.flutter.dev/get-started/install)
+- Android Studio (SDK + émulateur) ou un smartphone Android connecté en USB.
+- VS Code (ou Android Studio) avec les extensions **Flutter** et **Dart**.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### 2. Créer et lancer le projet
+```bash
+flutter pub get       # télécharge les dépendances
+flutter run           # lance l'app sur l'émulateur ou le téléphone
