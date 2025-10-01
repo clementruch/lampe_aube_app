@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import '../services/mock_api.dart';
+import '../services/http_api.dart';
 
 class DeviceAlarmsPage extends StatefulWidget {
   final Device device;
-  final MockApi api;
+  final HttpApi api;
   const DeviceAlarmsPage({super.key, required this.device, required this.api});
 
   @override
@@ -29,22 +29,6 @@ class _DeviceAlarmsPageState extends State<DeviceAlarmsPage> {
   String _formatTime(Alarm a) =>
       '${a.hour.toString().padLeft(2, '0')}:${a.minute.toString().padLeft(2, '0')}';
 
-  String _formatDays(Alarm a) {
-    // 1=Lun ... 7=Dim
-    const labels = {
-      1: 'Lu',
-      2: 'Ma',
-      3: 'Me',
-      4: 'Je',
-      5: 'Ve',
-      6: 'Sa',
-      7: 'Di'
-    };
-    if (a.days.length == 7) return 'Tous les jours';
-    if (a.days.isEmpty) return 'Une seule fois';
-    final sorted = a.days.toList()..sort();
-    return sorted.map((d) => labels[d]!).join(' ');
-  }
 
   Widget _daysChips(Set<int> days) {
     const labels = {
@@ -145,7 +129,7 @@ class _DeviceAlarmsPageState extends State<DeviceAlarmsPage> {
                       Switch(
                         value: a.enabled,
                         onChanged: (v) async {
-                          await widget.api.toggleAlarm(a.id!, v);
+                          await widget.api.toggleAlarm(widget.device.id, a.id!, v);
                           await _reload();
                         },
                       ),
@@ -153,10 +137,10 @@ class _DeviceAlarmsPageState extends State<DeviceAlarmsPage> {
                         tooltip: 'Supprimer',
                         icon: const Icon(Icons.delete_outline),
                         onPressed: () async {
-                          if (a.id == null) return; // garde-fou
+                          if (a.id == null) return;
                           final ok = await _confirmDelete(a);
                           if (ok == true) {
-                            await widget.api.deleteAlarm(a.id!);
+                            await widget.api.deleteAlarm(widget.device.id, a.id!);
                             await _reload();
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(

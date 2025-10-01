@@ -3,19 +3,19 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'state/app_state.dart';
-import 'services/mock_api.dart';
+import 'services/http_api.dart';
 import 'pages/login_page.dart';
 import 'pages/devices_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
-  final api = MockApi();
+  final api = HttpApi(baseUrl: 'http://10.0.2.2:3000');
   runApp(LampeAubeApp(api: api, prefs: prefs));
 }
 
 class LampeAubeApp extends StatelessWidget {
-  final MockApi api;
+  final HttpApi api;
   final SharedPreferences prefs;
   const LampeAubeApp({super.key, required this.api, required this.prefs});
 

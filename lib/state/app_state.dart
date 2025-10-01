@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../services/mock_api.dart';
+import '../services/http_api.dart';
 
 class AppState extends ChangeNotifier {
-  final MockApi api;
+  final HttpApi api;
   final SharedPreferences prefs;
   bool _initialized = false;
   String? _token;

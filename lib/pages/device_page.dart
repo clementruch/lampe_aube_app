@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
-import '../services/mock_api.dart';
+import '../services/http_api.dart';
 import 'alarms_page.dart';
 import 'device_settings_page.dart';
 
@@ -27,7 +27,7 @@ class _DevicePageState extends State<DevicePage> {
     _bootstrap(api);
   }
 
-  Future<void> _bootstrap(MockApi api) async {
+  Future<void> _bootstrap(HttpApi api) async {
     try {
       final s = await api.getDeviceState(widget.device.id);
       if (!mounted) return;
@@ -44,8 +44,7 @@ class _DevicePageState extends State<DevicePage> {
       setState(() => _loading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Impossible de charger l’état du périphérique'),
-        ),
+            content: Text('Impossible de charger l’état du périphérique')),
       );
     }
   }
@@ -88,13 +87,26 @@ class _DevicePageState extends State<DevicePage> {
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Paramètres',
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final api = context.read<AppState>().api;
+
+              // on attend le résultat de la page paramètres
+              final changed = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
                   builder: (_) => DeviceSettingsPage(device: widget.device),
                 ),
               );
+
+              // si la page a enregistré quelque chose, on recharge le device et on met à jour le titre
+              if (changed == true) {
+                final fresh = await api.getDevice(widget.device.id);
+                if (!mounted) return;
+                setState(() {
+                  widget.device.name =
+                      fresh.name; // on met à jour le nom affiché
+                });
+              }
             },
           ),
         ],
@@ -169,7 +181,7 @@ class _DevicePageState extends State<DevicePage> {
           ),
           const SizedBox(height: 12),
 
-          // Sensors (Lux + Temp only)
+          // Sensors (Lux + Temp)
           Card(
             child: ListTile(
               title: const Text('Capteurs (live)'),
@@ -212,7 +224,7 @@ class _DevicePageState extends State<DevicePage> {
     );
   }
 
-  Future<void> _applyPreset(MockApi api, String preset) async {
+  Future<void> _applyPreset(HttpApi api, String preset) async {
     switch (preset) {
       case 'lecture':
         await api.setPower(widget.device.id, true);

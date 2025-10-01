@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
-import '../services/mock_api.dart';
+import '../services/http_api.dart';
 
 class DeviceSettingsPage extends StatefulWidget {
   final Device device;
@@ -28,28 +28,49 @@ class _DeviceSettingsPageState extends State<DeviceSettingsPage> {
 
   Future<void> _bootstrap() async {
     final api = context.read<AppState>().api;
-    final cfg = await api.getDeviceConfig(widget.device.id);
-    if (!mounted) return;
-    setState(() {
-      _targetLux = cfg.targetLux;
-      _loading = false;
-    });
+    try {
+      final dev = await api.getDevice(widget.device.id);
+      if (!mounted) return;
+      setState(() {
+        _nameCtrl.text = dev.name;
+        _targetLux = devTargetLux(dev);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur chargement paramètres: $e')),
+      );
+    }
   }
 
-  Future<void> _save() async {
+  double devTargetLux(Device d) {
+    try {
+      return (d as dynamic).targetLux?.toDouble() ?? 120.0;
+    } catch (_) {
+      return 120.0;
+    }
+  }
+
+ Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final api = context.read<AppState>().api;
+
     setState(() => _saving = true);
     try {
-      // Sauvegarde du nom
+      // Renommer
       await api.renameDevice(widget.device.id, _nameCtrl.text.trim());
-      // Sauvegarde du seuil lux
-      await api.saveDeviceConfig(widget.device.id, targetLux: _targetLux);
+      // Sauver targetLux
+      if (_targetLux != null) {
+        await api.setDeviceTargetLux(widget.device.id, _targetLux!);
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Paramètres enregistrés')),
       );
-      Navigator.pop(context); // retour à la page device
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
