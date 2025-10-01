@@ -6,7 +6,7 @@ Application mobile Flutter pour piloter une **lampe connectée intelligente** (p
 - Simulation de lever du soleil (réveil progressif).
 - Modes prédéfinis : Lecture / Relax / Nuit.
 - Éclairage adaptatif via capteur de luminosité.
-- Suivi des données capteurs (Température, Humidité, Luminosité).
+- Suivi des données capteurs (Température, Luminosité).
 - Pilotage manuel (on/off, intensité, couleur).
 - Multi-utilisateurs / multi-lampes via API + stockage serveur.
 
