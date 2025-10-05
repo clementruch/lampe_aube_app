@@ -88,24 +88,13 @@ class _DevicePageState extends State<DevicePage> {
             icon: const Icon(Icons.settings),
             tooltip: 'Paramètres',
             onPressed: () async {
-              final api = context.read<AppState>().api;
-
-              // on attend le résultat de la page paramètres
               final changed = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => DeviceSettingsPage(device: widget.device),
-                ),
+                    builder: (_) => DeviceSettingsPage(device: widget.device)),
               );
-
-              // si la page a enregistré quelque chose, on recharge le device et on met à jour le titre
-              if (changed == true) {
-                final fresh = await api.getDevice(widget.device.id);
-                if (!mounted) return;
-                setState(() {
-                  widget.device.name =
-                      fresh.name; // on met à jour le nom affiché
-                });
+              if (changed == true && mounted) {
+                setState(() {});
               }
             },
           ),

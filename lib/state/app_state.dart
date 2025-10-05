@@ -9,6 +9,7 @@ class AppState extends ChangeNotifier {
   bool _initialized = false;
   String? _token;
   String? _email;
+  String? get token => _token;
 
   AppState({required this.api, required this.prefs}) {
     _bootstrap();
@@ -27,16 +28,31 @@ class AppState extends ChangeNotifier {
 
   Future<String?> login(
       {required String email, required String password}) async {
-    final result = await api.login(email: email, password: password);
-    if (result.success) {
-      _token = result.token;
+    final res = await api.login(email: email, password: password);
+    if (res.success) {
+      _token = res.token;
       _email = email;
       await prefs.setString('auth_token', _token!);
       await prefs.setString('auth_email', _email!);
       notifyListeners();
-      return null; // pas d'erreur
+      return null;
     } else {
-      return result.errorMessage ?? 'Échec de connexion';
+      return res.errorMessage ?? 'Échec de connexion';
+    }
+  }
+
+  Future<String?> signup(
+      {required String email, required String password}) async {
+    final res = await api.signup(email: email, password: password);
+    if (res.success) {
+      _token = res.token;
+      _email = email;
+      await prefs.setString('auth_token', _token!);
+      await prefs.setString('auth_email', _email!);
+      notifyListeners();
+      return null;
+    } else {
+      return res.errorMessage ?? 'Échec d’inscription';
     }
   }
 

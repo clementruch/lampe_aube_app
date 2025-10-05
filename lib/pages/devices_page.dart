@@ -19,14 +19,14 @@ class _DevicesPageState extends State<DevicesPage> {
     super.initState();
     final api = context.read<AppState>().api;
     final app = context.read<AppState>();
-    _future = api.listDevices(token: app.email ?? '');
+    _future = api.listDevices(token: app.token!);
   }
 
   Future<void> _reload() async {
     final api = context.read<AppState>().api;
     final app = context.read<AppState>();
     setState(() {
-      _future = api.listDevices(token: app.email ?? '');
+      _future = api.listDevices(token: app.token!);
     });
   }
 

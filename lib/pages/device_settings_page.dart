@@ -16,55 +16,29 @@ class _DeviceSettingsPageState extends State<DeviceSettingsPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameCtrl;
   double? _targetLux;
-  bool _loading = true;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.device.name);
-    _bootstrap();
+    _targetLux = (widget.device.targetLux ?? 120).toDouble();
   }
 
-  Future<void> _bootstrap() async {
-    final api = context.read<AppState>().api;
-    try {
-      final dev = await api.getDevice(widget.device.id);
-      if (!mounted) return;
-      setState(() {
-        _nameCtrl.text = dev.name;
-        _targetLux = devTargetLux(dev);
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur chargement paramètres: $e')),
-      );
-    }
-  }
+  double devTargetLux(Device d) =>
+      (d.targetLux ?? 120).toDouble();
 
-  double devTargetLux(Device d) {
-    try {
-      return (d as dynamic).targetLux?.toDouble() ?? 120.0;
-    } catch (_) {
-      return 120.0;
-    }
-  }
-
- Future<void> _save() async {
+  Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final api = context.read<AppState>().api;
 
     setState(() => _saving = true);
     try {
-      // Renommer
       await api.renameDevice(widget.device.id, _nameCtrl.text.trim());
-      // Sauver targetLux
-      if (_targetLux != null) {
-        await api.setDeviceTargetLux(widget.device.id, _targetLux!);
-      }
+      await api.setDeviceTargetLux(widget.device.id, _targetLux!);
+
+      widget.device.name = _nameCtrl.text.trim();
+      widget.device.targetLux = _targetLux;
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -90,13 +64,6 @@ class _DeviceSettingsPageState extends State<DeviceSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    if (_loading || _targetLux == null) {
-      return Scaffold(
-        appBar: AppBar(title: Text('Paramètres — ${widget.device.name}')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
     return Scaffold(
       appBar: AppBar(title: Text('Paramètres — ${widget.device.name}')),
       body: Form(
@@ -109,18 +76,14 @@ class _DeviceSettingsPageState extends State<DeviceSettingsPage> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _nameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Nom de la lampe',
-                        hintText: 'ex: Lampe Chambre',
-                      ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
-                    ),
-                  ],
+                child: TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nom de la lampe',
+                    hintText: 'ex: Lampe Chambre',
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Nom requis' : null,
                 ),
               ),
             ),
@@ -138,7 +101,7 @@ class _DeviceSettingsPageState extends State<DeviceSettingsPage> {
                       value: _targetLux!,
                       min: 20,
                       max: 500,
-                      divisions: 48, // pas de ~10 lux
+                      divisions: 48,
                       label: '${_targetLux!.round()} lux',
                       onChanged: (v) => setState(() => _targetLux = v),
                     ),
@@ -163,7 +126,9 @@ class _DeviceSettingsPageState extends State<DeviceSettingsPage> {
                 onPressed: _saving ? null : _save,
                 icon: _saving
                     ? const SizedBox(
-                        width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.save),
                 label: const Text('Enregistrer'),
               ),
