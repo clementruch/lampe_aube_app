@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
@@ -13,209 +14,188 @@ class DevicesPage extends StatefulWidget {
 }
 
 class _DevicesPageState extends State<DevicesPage> {
-  late Future<List<Device>> _future;
+  final Map<String, DeviceState> _states = {};
+  List<Device> _devices = [];
+  bool _loading = true;
+  bool _busy = false;
+  Timer? _poll;
+
+  HttpApi get _api => context.read<AppState>().api;
+  String get _token => context.read<AppState>().token!;
 
   @override
   void initState() {
     super.initState();
-    final api = context.read<AppState>().api;
-    final app = context.read<AppState>();
-    _future = api.listDevices(token: app.token!);
+    _bootstrap();
+    _poll = Timer.periodic(const Duration(seconds: 5), (_) => _refreshStates());
   }
 
-  Future<void> _reload() async {
-    final api = context.read<AppState>().api;
-    final app = context.read<AppState>();
-    setState(() {
-      _future = api.listDevices(token: app.token!);
-    });
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
   }
 
-  Future<void> _createDevice() async {
-    final api = context.read<AppState>().api;
-    final nameCtrl = TextEditingController(text: 'Nouvelle lampe');
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Ajouter une lampe'),
-        content: TextField(
-          controller: nameCtrl,
-          decoration: const InputDecoration(labelText: 'Nom'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Créer'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      await api.createDevice(nameCtrl.text.trim());
-      await _reload();
+  Future<void> _bootstrap() async {
+    try {
+      final list = await _api.listDevices(token: _token);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Lampe ajoutée')));
+      setState(() {
+        _devices = list;
+        _loading = false;
+      });
+      await _refreshStates();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _showError(e);
     }
+  }
+
+  Future<void> _refreshStates() async {
+    if (_busy || !mounted || _devices.isEmpty) return;
+    _busy = true;
+    try {
+      final futures = _devices.map((d) => _api.getDeviceState(d.id));
+      final results = await Future.wait(futures, eagerError: false);
+      if (!mounted) return;
+      setState(() {
+        for (final st in results) {
+          _states[st.deviceId] = st;
+        }
+      });
+    } catch (_) {
+    } finally {
+      _busy = false;
+    }
+  }
+
+  Future<void> _reloadDevices() async {
+    try {
+      final list = await _api.listDevices(token: _token);
+      if (!mounted) return;
+      setState(() => _devices = list);
+      await _refreshStates();
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  void _showError(Object e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur: $e')),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Device>>(
-      future: _future,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Mes lampes')),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Impossible de charger les lampes.',
-                        textAlign: TextAlign.center),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${snapshot.error}', // 👈 détail technique
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                        onPressed: _reload, child: const Text('Réessayer')),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: () async {
-                        await context.read<AppState>().logout();
-                        if (!mounted) return;
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LoginPage()),
-                          (route) => false,
-                        );
-                      },
-                      child: const Text('Se reconnecter'),
-                    ),
-                  ],
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Mes lampes'),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'logout') {
+                await context.read<AppState>().logout();
+                if (!mounted) return;
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              } else if (value == 'refresh') {
+                await _reloadDevices();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'refresh',
+                child: ListTile(
+                  leading: Icon(Icons.refresh),
+                  title: Text('Actualiser'),
                 ),
               ),
-            ),
-          );
-        }
-
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final devices = snapshot.data ?? const <Device>[];
-
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Mes lampes'),
-            actions: [
-              // Menu profil (déconnexion)
-              PopupMenuButton<String>(
-                tooltip: 'Compte',
-                onSelected: (value) async {
-                  if (value == 'logout') {
-                    await context
-                        .read<AppState>()
-                        .logout(); // vide token + prefs
-                    if (!mounted) return;
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                      (route) => false,
-                    );
-                  } else if (value == 'add') {
-                    await _createDevice();
-                  } else if (value == 'refresh') {
-                    await _reload();
-                  }
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: 'refresh',
-                    child: ListTile(
-                      leading: Icon(Icons.refresh),
-                      title: Text('Actualiser'),
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'add',
-                    child: ListTile(
-                      leading: Icon(Icons.add),
-                      title: Text('Ajouter une lampe'),
-                    ),
-                  ),
-                  PopupMenuDivider(),
-                  PopupMenuItem(
-                    value: 'logout',
-                    child: ListTile(
-                      leading: Icon(Icons.logout),
-                      title: Text('Se déconnecter'),
-                    ),
-                  ),
-                ],
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(Icons.logout),
+                  title: Text('Se déconnecter'),
+                ),
               ),
             ],
           ),
-          body: RefreshIndicator(
-            onRefresh: _reload,
-            // permet le pull-to-refresh même si la liste est vide
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: devices.isEmpty ? 1 : devices.length,
-              itemBuilder: (context, i) {
-                if (devices.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(
-                      child: Text(
-                        'Aucune lampe pour le moment.\nUtilise le menu pour en ajouter.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
-                final d = devices[i];
-                return ListTile(
-                  title: Text(d.name),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => DevicePage(device: d)),
-                    );
-                  },
-                  onLongPress: () async {
-                    final changed = await Navigator.push<bool>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DeviceSettingsPage(device: d),
-                      ),
-                    );
-                    if (changed == true) await _reload();
-                  },
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _reloadDevices,
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          itemCount: _devices.isEmpty ? 1 : _devices.length,
+          itemBuilder: (context, i) {
+            if (_devices.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                  child: Text(
+                    'Aucune lampe pour le moment.\nUtilise le menu pour en ajouter.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            }
+            final d = _devices[i];
+            final st = _states[d.id];
+            String subtitle;
+            if (st == null) {
+              subtitle = '…';
+            } else if ((st.lux == -1 && st.temp == -50) ||
+                st.lux.isNaN ||
+                st.temp.isNaN) {
+              subtitle = 'Aucune donnée';
+            } else {
+              subtitle = 'Lux: ${st.lux.toStringAsFixed(0)} • '
+                  'Temp: ${st.temp.toStringAsFixed(1)} °C';
+            }
+
+            return ListTile(
+              key: ValueKey(d.id),
+              title: Text(d.name),
+              subtitle: Text(subtitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => DevicePage(device: d)),
                 );
+                // au retour, on rafraîchit l’état de cette lampe
+                final ns = await _api.getDeviceState(d.id);
+                if (!mounted) return;
+                setState(() => _states[d.id] = ns);
               },
-            ),
-          ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () async {
-              await _reload();
-            },
-            child: const Icon(Icons.refresh),
-          ),
-        );
-      },
+              onLongPress: () async {
+                final changed = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DeviceSettingsPage(device: d),
+                  ),
+                );
+                if (changed == true) await _reloadDevices();
+              },
+            );
+          },
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _reloadDevices,
+        child: const Icon(Icons.refresh),
+      ),
     );
   }
 }

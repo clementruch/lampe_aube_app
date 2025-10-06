@@ -170,15 +170,53 @@ class _DevicePageState extends State<DevicePage> {
           ),
           const SizedBox(height: 12),
 
-          // Sensors (Lux + Temp)
+          // Capteurs (Lux + Temp)
           Card(
-            child: ListTile(
-              title: const Text('Capteurs (live)'),
-              subtitle: Text(
-                'Lux: ${s.lux.toStringAsFixed(0)} • '
-                'Temp: ${s.temp.toStringAsFixed(1)} °C',
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Luminosité',
+                            style: TextStyle(fontSize: 12)),
+                        const SizedBox(height: 4),
+                        Text(
+                          (s.lux.isNaN || s.lux == -1)
+                              ? 'Aucune donnée'
+                              : '${s.lux.toStringAsFixed(0)} lux',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const VerticalDivider(width: 24),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Température',
+                            style: TextStyle(fontSize: 12)),
+                        const SizedBox(height: 4),
+                        Text(
+                          (s.temp.isNaN || s.temp == -50)
+                              ? 'Aucune donnée'
+                              : '${s.temp.toStringAsFixed(1)} °C',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              leading: Icon(Icons.sensors, color: theme.colorScheme.primary),
             ),
           ),
           const SizedBox(height: 12),
