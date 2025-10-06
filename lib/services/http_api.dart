@@ -16,11 +16,21 @@ class Device {
 
   Device({required this.id, required this.name, this.targetLux});
 
-  factory Device.fromJson(Map<String, dynamic> j) => Device(
-        id: j['id'] as String,
-        name: j['name'] as String,
-        targetLux: (j['targetLux'] as num?)?.toDouble(),
-      );
+  factory Device.fromJson(Map<String, dynamic> j) {
+    final id = (j['id'] ?? j['_id'] ?? j['uuid']) as String?;
+    final name = (j['name'] ?? j['label'] ?? j['title']) as String?;
+    final target =
+        (j['targetLux'] ?? j['target_lux'] ?? j['targetlux']) as num?;
+
+    if (id == null || name == null) {
+      throw FormatException('Device JSON invalide: $j');
+    }
+    return Device(
+      id: id,
+      name: name,
+      targetLux: target?.toDouble(),
+    );
+  }
 }
 
 class DeviceState {
@@ -247,6 +257,18 @@ class HttpApi {
   }
 
   // ---- Devices ----
+  Future<Device> createDevice(String name) async {
+    final r = await _client.post(
+      Uri.parse('$baseUrl/devices'),
+      headers: _headersJson(),
+      body: jsonEncode({'name': name}),
+    );
+    if (r.statusCode != 201 && r.statusCode != 200) {
+      throw Exception('POST /devices failed: ${r.body}');
+    }
+    return Device.fromJson(jsonDecode(r.body));
+  }
+
   Future<Device> getDevice(String id) async {
     // En l'absence de GET /devices/:id côté back, on lit la liste puis on filtre.
     // (authToken est déjà défini après login/signup)
@@ -268,13 +290,43 @@ class HttpApi {
   }
 
   Future<List<Device>> listDevices({required String token}) async {
-    authToken ??= token; // on l’initialise si nécessaire
-    final r = await _client.get(Uri.parse('$baseUrl/devices'),
-        headers: _headersJson());
-    if (r.statusCode != 200)
-      throw Exception('GET /devices failed: ${r.statusCode}');
-    final List list = jsonDecode(r.body) as List;
-    return list.map((e) => Device.fromJson(e as Map<String, dynamic>)).toList();
+    authToken = token;
+    final r = await _client.get(
+      Uri.parse('$baseUrl/devices'),
+      headers: _headersJson(),
+    );
+
+    if (r.statusCode == 401) {
+      final short = (authToken ?? '').toString();
+      final preview = short.length > 12 ? '${short.substring(0, 12)}…' : short;
+      throw Exception(
+          '401 Unauthorized • sent Bearer $preview • body=${r.body}');
+    }
+
+    if (r.statusCode != 200) {
+      throw Exception('GET /devices failed: ${r.statusCode} • ${r.body}');
+    }
+
+    final decoded = jsonDecode(r.body);
+    List list;
+
+    if (decoded is List) {
+      list = decoded;
+    } else if (decoded is Map && decoded['devices'] is List) {
+      list = decoded['devices'] as List;
+    } else if (decoded is Map && decoded['items'] is List) {
+      list = decoded['items'] as List;
+    } else {
+      throw Exception('Format inattendu pour /devices: ${r.body}');
+    }
+
+    try {
+      return list
+          .map((e) => Device.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw Exception('Parse devices error: $e • body=${r.body}');
+    }
   }
 
   Future<void> renameDevice(String id, String name) async {

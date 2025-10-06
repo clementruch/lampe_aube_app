@@ -22,6 +22,7 @@ class AppState extends ChangeNotifier {
   Future<void> _bootstrap() async {
     _token = prefs.getString('auth_token');
     _email = prefs.getString('auth_email');
+    api.authToken = _token;
     _initialized = true;
     notifyListeners();
   }
@@ -32,6 +33,7 @@ class AppState extends ChangeNotifier {
     if (res.success) {
       _token = res.token;
       _email = email;
+      api.authToken = _token;
       await prefs.setString('auth_token', _token!);
       await prefs.setString('auth_email', _email!);
       notifyListeners();
@@ -47,6 +49,7 @@ class AppState extends ChangeNotifier {
     if (res.success) {
       _token = res.token;
       _email = email;
+      api.authToken = _token;
       await prefs.setString('auth_token', _token!);
       await prefs.setString('auth_email', _email!);
       notifyListeners();
@@ -59,6 +62,7 @@ class AppState extends ChangeNotifier {
   Future<void> logout() async {
     _token = null;
     _email = null;
+    api.authToken = null;
     await prefs.remove('auth_token');
     await prefs.remove('auth_email');
     notifyListeners();

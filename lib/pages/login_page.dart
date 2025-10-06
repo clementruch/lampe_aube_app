@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/app_state.dart';
 import 'devices_page.dart';
+import 'signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,23 +16,30 @@ class _LoginPageState extends State<LoginPage> {
   final _emailCtrl = TextEditingController(text: 'demo@aube.app');
   final _passCtrl = TextEditingController(text: 'demo');
   bool _loading = false;
+  bool _showPass = false;
 
-  Future<void> _do(bool signup) async {
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _doLogin() async {
     if (!_formKey.currentState!.validate()) return;
     final app = context.read<AppState>();
     setState(() => _loading = true);
     try {
-      final err = signup
-          ? await app.signup(
-              email: _emailCtrl.text.trim(), password: _passCtrl.text)
-          : await app.login(
-              email: _emailCtrl.text.trim(), password: _passCtrl.text);
-
+      final err = await app.login(
+        email: _emailCtrl.text.trim(),
+        password: _passCtrl.text,
+      );
       if (err == null && mounted) {
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const DevicesPage()));
-      } else {
-        if (!mounted) return;
+          context,
+          MaterialPageRoute(builder: (_) => const DevicesPage()),
+        );
+      } else if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text(err ?? 'Erreur inconnue')));
       }
@@ -53,24 +61,45 @@ class _LoginPageState extends State<LoginPage> {
               controller: _emailCtrl,
               decoration: const InputDecoration(labelText: 'Email'),
               validator: (v) => (v == null || v.isEmpty) ? 'Requis' : null,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.username, AutofillHints.email],
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _passCtrl,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Mot de passe'),
+              obscureText: !_showPass,
+              decoration: InputDecoration(
+                labelText: 'Mot de passe',
+                suffixIcon: IconButton(
+                  onPressed: () => setState(() => _showPass = !_showPass),
+                  icon: Icon(_showPass ? Icons.visibility_off : Icons.visibility),
+                  tooltip: _showPass ? 'Masquer' : 'Afficher',
+                ),
+              ),
               validator: (v) => (v == null || v.isEmpty) ? 'Requis' : null,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _loading ? null : _doLogin(),
+              autofillHints: const [AutofillHints.password],
             ),
             const SizedBox(height: 24),
             FilledButton(
-              onPressed: _loading ? null : () => _do(false),
+              onPressed: _loading ? null : _doLogin,
               child: _loading
-                  ? const CircularProgressIndicator()
+                  ? const SizedBox(
+                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Se connecter'),
             ),
             const SizedBox(height: 8),
             OutlinedButton(
-              onPressed: _loading ? null : () => _do(true),
+              onPressed: _loading
+                  ? null
+                  : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SignupPage()),
+                      );
+                    },
               child: const Text('Créer un compte'),
             ),
           ],
