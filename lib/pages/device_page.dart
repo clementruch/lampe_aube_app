@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
 import '../services/http_api.dart';
-import 'alarms_page.dart';
 import 'device_settings_page.dart';
 
 class DevicePage extends StatefulWidget {
@@ -70,20 +69,6 @@ class _DevicePageState extends State<DevicePage> {
       appBar: AppBar(
         title: Text(widget.device.name),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.alarm),
-            tooltip: 'Réveils',
-            onPressed: () {
-              final api = context.read<AppState>().api;
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      DeviceAlarmsPage(device: widget.device, api: api),
-                ),
-              );
-            },
-          ),
           IconButton(
             icon: const Icon(Icons.settings),
             tooltip: 'Paramètres',
@@ -221,7 +206,6 @@ class _DevicePageState extends State<DevicePage> {
           ),
           const SizedBox(height: 12),
 
-          // Presets
           Row(
             children: [
               Expanded(

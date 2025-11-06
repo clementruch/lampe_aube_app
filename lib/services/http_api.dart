@@ -70,12 +70,13 @@ class DeviceState {
 
 class Alarm {
   final String? id;
-  final String deviceId;
-  final int hour;
-  final int minute;
-  final Set<int> days; // 1..7
+  final String? deviceId;
+  final int hour, minute;
+  final Set<int> days;
   final int durationMinutes;
   final bool enabled;
+  final bool sunrise;
+  final String? label;
 
   Alarm({
     required this.id,
@@ -85,59 +86,55 @@ class Alarm {
     required this.days,
     required this.durationMinutes,
     required this.enabled,
+    required this.sunrise,
+    this.label,
   });
 
   Alarm copyWith({
     String? id,
     String? deviceId,
-    int? hour,
-    int? minute,
-    Set<int>? days,
-    int? durationMinutes,
-    bool? enabled,
-  }) {
-    return Alarm(
-      id: id ?? this.id,
-      deviceId: deviceId ?? this.deviceId,
-      hour: hour ?? this.hour,
-      minute: minute ?? this.minute,
-      days: days ?? this.days,
-      durationMinutes: durationMinutes ?? this.durationMinutes,
-      enabled: enabled ?? this.enabled,
-    );
-  }
+    int? hour, int? minute, Set<int>? days,
+    int? durationMinutes, bool? enabled,
+    bool? sunrise, String? label,
+  }) => Alarm(
+    id: id ?? this.id,
+    deviceId: deviceId ?? this.deviceId,
+    hour: hour ?? this.hour,
+    minute: minute ?? this.minute,
+    days: days ?? this.days,
+    durationMinutes: durationMinutes ?? this.durationMinutes,
+    enabled: enabled ?? this.enabled,
+    sunrise: sunrise ?? this.sunrise,
+    label: label ?? this.label,
+  );
 
-  factory Alarm.fromJson(Map<String, dynamic> j, String deviceId) {
+  factory Alarm.fromJson(Map<String, dynamic> j, [String? fallbackDeviceId]) {
     final List dynDays = j['days'] ?? [];
-    final daysSet = dynDays
-        .map((e) {
-          if (e is int) return e;
-          if (e is String) return int.tryParse(e) ?? 0;
-          return 0;
-        })
-        .where((x) => x > 0)
-        .toSet();
-
+    final daysSet = dynDays.map((e) => e is int ? e : int.tryParse('$e') ?? 0).where((x)=>x>0).toSet();
     return Alarm(
       id: j['id'] as String?,
-      deviceId: deviceId,
+      deviceId: (j['device']?['id'] as String?) ?? j['deviceId'] as String? ?? fallbackDeviceId,
       hour: j['hour'] as int,
       minute: j['minute'] as int,
       days: daysSet,
-      durationMinutes: j['durationMinutes'] as int,
+      durationMinutes: (j['durationMinutes'] as num).toInt(),
       enabled: j['enabled'] as bool,
+      sunrise: (j['sunrise'] as bool?) ?? (fallbackDeviceId != null),
+      label: j['label'] as String?,
     );
   }
 
   Map<String, dynamic> toBackendPayload() => {
-        'hour': hour,
-        'minute': minute,
-        'days': days.toList(),
-        'durationMinutes': durationMinutes,
-        'enabled': enabled,
-      };
+    'hour': hour,
+    'minute': minute,
+    'days': days.toList(),
+    'durationMinutes': durationMinutes,
+    'enabled': enabled,
+    'sunrise': sunrise,
+    'label': label,
+    'deviceId': deviceId,
+  };
 }
-
 class HttpApi {
   final String baseUrl;
   final http.Client _client;
@@ -247,7 +244,7 @@ class HttpApi {
     }
   }
 
-  // Polling “live” sans simulation (rafraîchit toutes les 2s)
+  // Polling (rafraîchit toutes les 2s)
   Stream<DeviceState> subscribeState(String deviceId,
       {Duration every = const Duration(seconds: 2)}) async* {
     while (true) {
@@ -270,8 +267,6 @@ class HttpApi {
   }
 
   Future<Device> getDevice(String id) async {
-    // En l'absence de GET /devices/:id côté back, on lit la liste puis on filtre.
-    // (authToken est déjà défini après login/signup)
     final r = await _client.get(
       Uri.parse('$baseUrl/devices'),
       headers: _headersJson(),
@@ -349,54 +344,61 @@ class HttpApi {
   }
 
   // ---- Alarms ----
-  Future<List<Alarm>> listAlarms(String deviceId) async {
-    final r = await _client.get(
-      Uri.parse('$baseUrl/devices/$deviceId/alarms'),
-      headers: _headersJson(),
-    );
-    if (r.statusCode != 200) throw Exception('GET alarms failed');
+  Future<List<Alarm>> listAllAlarms() async {
+    final r = await _client.get(Uri.parse('$baseUrl/alarms'), headers: _headersJson());
+    if (r.statusCode != 200) throw Exception('GET /alarms failed: ${r.body}');
     final List list = jsonDecode(r.body) as List;
-    return list
-        .map((j) => Alarm.fromJson(j as Map<String, dynamic>, deviceId))
-        .toList();
+    return list.map((j) => Alarm.fromJson(j as Map<String, dynamic>)).toList();
   }
 
-  Future<void> deleteAlarm(String deviceId, String id) async {
-    final r = await _client.delete(
-      Uri.parse('$baseUrl/devices/$deviceId/alarms/$id'),
-      headers: _headersJson(),
-    );
-    if (r.statusCode != 200 && r.statusCode != 204)
-      throw Exception('DELETE alarm failed');
+  Future<List<Alarm>> listAlarms(String deviceId) async {
+    final r = await _client.get(Uri.parse('$baseUrl/alarms?deviceId=$deviceId'), headers: _headersJson());
+    if (r.statusCode != 200) throw Exception('GET alarms by device failed: ${r.body}');
+    final List list = jsonDecode(r.body) as List;
+    return list.map((j) => Alarm.fromJson(j as Map<String, dynamic>, deviceId)).toList();
   }
 
   Future<Alarm> saveAlarm(Alarm a) async {
     if (a.id == null) {
-      final r = await _client.post(
-        Uri.parse('$baseUrl/devices/${a.deviceId}/alarms'),
-        headers: _headersJson(),
-        body: jsonEncode(a.toBackendPayload()),
-      );
-      if (r.statusCode != 201 && r.statusCode != 200)
-        throw Exception('POST alarm failed: ${r.body}');
-      return Alarm.fromJson(jsonDecode(r.body), a.deviceId);
+      final r = await _client.post(Uri.parse('$baseUrl/alarms'),
+        headers: _headersJson(), body: jsonEncode(a.toBackendPayload()));
+      if (r.statusCode != 201 && r.statusCode != 200) {
+        throw Exception('POST /alarms failed: ${r.body}');
+      }
+      return Alarm.fromJson(jsonDecode(r.body));
     } else {
-      final r = await _client.patch(
-        Uri.parse('$baseUrl/devices/${a.deviceId}/alarms/${a.id}'),
-        headers: _headersJson(),
-        body: jsonEncode(a.toBackendPayload()),
-      );
-      if (r.statusCode != 200) throw Exception('PATCH alarm failed');
-      return Alarm.fromJson(jsonDecode(r.body), a.deviceId);
+      final r = await _client.patch(Uri.parse('$baseUrl/alarms/${a.id}'),
+        headers: _headersJson(), body: jsonEncode(a.toBackendPayload()));
+      if (r.statusCode != 200) throw Exception('PATCH /alarms/${a.id} failed: ${r.body}');
+      return Alarm.fromJson(jsonDecode(r.body));
     }
   }
 
-  Future<void> toggleAlarm(String deviceId, String id, bool enabled) async {
+  Future<void> deleteAlarmById(String id) async {
+    final r = await _client.delete(Uri.parse('$baseUrl/alarms/$id'), headers: _headersJson());
+    if (r.statusCode != 200 && r.statusCode != 204) throw Exception('DELETE /alarms/$id failed: ${r.body}');
+  }
+
+  Future<void> toggleAlarmById(String id, bool enabled) async {
     final r = await _client.patch(
-      Uri.parse('$baseUrl/devices/$deviceId/alarms/$id'),
+      Uri.parse('$baseUrl/alarms/$id'),
       headers: _headersJson(),
       body: jsonEncode({'enabled': enabled}),
     );
-    if (r.statusCode != 200) throw Exception('toggle alarm failed');
+    if (r.statusCode != 200) throw Exception('PATCH toggle /alarms/$id failed: ${r.body}');
+  }
+
+  Future<void> setDeviceSunrise(String deviceId, DateTime? at, int durationMin) async {
+    final r = await _client.patch(
+      Uri.parse('$baseUrl/devices/$deviceId/sunrise'),
+      headers: _headersJson(),
+      body: jsonEncode({
+        'at': at?.toIso8601String(),
+        'duration': durationMin,
+      }),
+    );
+    if (r.statusCode != 200) {
+      throw Exception('PATCH sunrise failed: ${r.body}');
+    }
   }
 }

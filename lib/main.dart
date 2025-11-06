@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lampe_aube_app/utils/alarm_service.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,6 +12,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   final api = HttpApi(baseUrl: 'http://10.0.2.2:3000');
+  await AlarmService.instance.init(api: api);
   runApp(LampeAubeApp(api: api, prefs: prefs));
 }
 
@@ -41,7 +43,6 @@ class LampeAubeApp extends StatelessWidget {
   }
 }
 
-/// RootGate choisit l'écran selon l'état de connexion.
 class RootGate extends StatelessWidget {
   const RootGate({super.key});
   @override

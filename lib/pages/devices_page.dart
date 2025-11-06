@@ -6,6 +6,7 @@ import '../services/http_api.dart';
 import 'device_page.dart';
 import 'device_settings_page.dart';
 import 'login_page.dart';
+import 'alarms_all_page.dart';
 
 class DevicesPage extends StatefulWidget {
   const DevicesPage({super.key});
@@ -174,7 +175,6 @@ class _DevicesPageState extends State<DevicesPage> {
                   context,
                   MaterialPageRoute(builder: (_) => DevicePage(device: d)),
                 );
-                // au retour, on rafraîchit l’état de cette lampe
                 final ns = await _api.getDeviceState(d.id);
                 if (!mounted) return;
                 setState(() => _states[d.id] = ns);
@@ -192,9 +192,15 @@ class _DevicesPageState extends State<DevicesPage> {
           },
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _reloadDevices,
-        child: const Icon(Icons.refresh),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const GlobalAlarmsPage()),
+          );
+        },
+        icon: const Icon(Icons.alarm),
+        label: const Text('Alarmes'),
       ),
     );
   }

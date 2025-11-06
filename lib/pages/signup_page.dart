@@ -55,7 +55,6 @@ class _SignupPageState extends State<SignupPage> {
 
   String? _validateEmail(String? v) {
     if (v == null || v.trim().isEmpty) return 'Email requis';
-    // Simple check
     if (!v.contains('@') || !v.contains('.')) return 'Email invalide';
     return null;
   }
