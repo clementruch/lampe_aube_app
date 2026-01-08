@@ -8,10 +8,17 @@ import 'services/http_api.dart';
 import 'pages/login_page.dart';
 import 'pages/devices_page.dart';
 
+import 'dart:io';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
-  final api = HttpApi(baseUrl: 'http://10.0.2.2:3000');
+  String getBaseUrl() {
+  if (Platform.isAndroid) return 'http://10.0.2.2:3000';
+  if (Platform.isIOS)     return 'http://172.20.10.2:3000'; // IP de ton back sur le Hotspot
+  return 'http://172.20.10.2:3000';
+}
+final api = HttpApi(baseUrl: getBaseUrl());
   await AlarmService.instance.init(api: api);
   runApp(LampeAubeApp(api: api, prefs: prefs));
 }

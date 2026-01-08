@@ -52,6 +52,7 @@
 	</array>
 	
 	<key>NSAppTransportSecurity</key>
+	<string>Connexion au serveur local de la lampe (API) sur le réseau.</string>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
