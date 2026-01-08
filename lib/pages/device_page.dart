@@ -18,10 +18,12 @@ class _DevicePageState extends State<DevicePage> {
   DeviceState? _state;
   StreamSubscription<DeviceState>? _sub;
   bool _loading = true;
-
+  bool _adaptiveEnabled = false;
+  
   @override
   void initState() {
     super.initState();
+    _adaptiveEnabled = widget.device.adaptiveEnabled;
     final api = context.read<AppState>().api;
     _bootstrap(api);
   }
@@ -102,54 +104,83 @@ class _DevicePageState extends State<DevicePage> {
           ),
           const SizedBox(height: 12),
 
-          // Brightness
+          // Adaptative Mode
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Luminosité'),
-                  Slider(
-                    value: s.brightness,
-                    min: 0,
-                    max: 1,
-                    onChanged: (v) =>
-                        setState(() => _state = s.copyWith(brightness: v)),
-                    onChangeEnd: (v) async {
-                      final ns = await api.setBrightness(widget.device.id, v);
-                      setState(() => _state = ns);
-                    },
-                  ),
-                  Text('${(s.brightness * 100).round()} %'),
-                ],
+            child: SwitchListTile(
+              title: const Text('Éclairage adaptatif'),
+              subtitle: Text(_adaptiveEnabled
+                  ? 'Actif — réglages manuels verrouillés'
+                  : 'Inactif'),
+              value: _adaptiveEnabled,
+              onChanged: (v) async {
+                setState(() => _adaptiveEnabled = v);
+
+                try {
+                  await api.setAdaptiveEnabled(widget.device.id, v);
+                  widget.device.adaptiveEnabled = v;
+                } catch (e) {
+                  if (!mounted) return;
+                  setState(() => _adaptiveEnabled = !v);
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Brightness
+          _lockWhenAdaptive(
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Luminosité'),
+                    Slider(
+                      value: s.brightness,
+                      min: 0,
+                      max: 1,
+                      onChanged: (v) =>
+                          setState(() => _state = s.copyWith(brightness: v)),
+                      onChangeEnd: (v) async {
+                        final ns = await api.setBrightness(widget.device.id, v);
+                        setState(() => _state = ns);
+                      },
+                    ),
+                    Text('${(s.brightness * 100).round()} %'),
+                  ],
+                ),
               ),
             ),
           ),
           const SizedBox(height: 12),
 
           // Température de couleur
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Température de couleur (K)'),
-                  Slider(
-                    value: s.colorTemp.clamp(2000, 6500).toDouble(),
-                    min: 2000,
-                    max: 6500,
-                    divisions: 9,
-                    onChanged: (v) =>
-                        setState(() => _state = s.copyWith(colorTemp: v)),
-                    onChangeEnd: (v) async {
-                      final ns = await api.setColorTemp(widget.device.id, v);
-                      setState(() => _state = ns);
-                    },
-                  ),
-                  Text('${s.colorTemp.round()} K'),
-                ],
+          _lockWhenAdaptive(
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Température de couleur (K)'),
+                    Slider(
+                      value: s.colorTemp.clamp(2000, 6500).toDouble(),
+                      min: 2000,
+                      max: 6500,
+                      divisions: 9,
+                      onChanged: (v) =>
+                          setState(() => _state = s.copyWith(colorTemp: v)),
+                      onChangeEnd: (v) async {
+                        final ns = await api.setColorTemp(widget.device.id, v);
+                        setState(() => _state = ns);
+                      },
+                    ),
+                    Text('${s.colorTemp.round()} K'),
+                  ],
+                ),
               ),
             ),
           ),
@@ -206,29 +237,32 @@ class _DevicePageState extends State<DevicePage> {
           ),
           const SizedBox(height: 12),
 
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _applyPreset(api, 'lecture'),
-                  child: const Text('Lecture'),
+          // Presets
+          _lockWhenAdaptive(
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _applyPreset(api, 'lecture'),
+                    child: const Text('Lecture'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _applyPreset(api, 'relax'),
-                  child: const Text('Relax'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _applyPreset(api, 'relax'),
+                    child: const Text('Relax'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _applyPreset(api, 'nuit'),
-                  child: const Text('Nuit'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _applyPreset(api, 'nuit'),
+                    child: const Text('Nuit'),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -253,5 +287,15 @@ class _DevicePageState extends State<DevicePage> {
         await api.setColorTemp(widget.device.id, 2700);
         break;
     }
+  }
+
+  Widget _lockWhenAdaptive(Widget child) {
+    return Opacity(
+      opacity: _adaptiveEnabled ? 0.4 : 1.0,
+      child: IgnorePointer(
+        ignoring: _adaptiveEnabled,
+        child: child,
+      ),
+    );
   }
 }

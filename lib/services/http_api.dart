@@ -13,14 +13,15 @@ class Device {
   final String id;
   String name;
   double? targetLux;
+  bool adaptiveEnabled;
 
-  Device({required this.id, required this.name, this.targetLux});
+  Device({required this.id, required this.name, this.targetLux, this.adaptiveEnabled = false});
 
   factory Device.fromJson(Map<String, dynamic> j) {
     final id = (j['id'] ?? j['_id'] ?? j['uuid']) as String?;
     final name = (j['name'] ?? j['label'] ?? j['title']) as String?;
-    final target =
-        (j['targetLux'] ?? j['target_lux'] ?? j['targetlux']) as num?;
+    final target = (j['targetLux'] ?? j['target_lux'] ?? j['targetlux']) as num?;
+    final adaptive = (j['adaptiveEnabled'] ?? j['adaptive_enabled'] ?? false) as bool;
 
     if (id == null || name == null) {
       throw FormatException('Device JSON invalide: $j');
@@ -29,6 +30,7 @@ class Device {
       id: id,
       name: name,
       targetLux: target?.toDouble(),
+      adaptiveEnabled: adaptive,
     );
   }
 }
@@ -341,6 +343,27 @@ class HttpApi {
     );
     if (r.statusCode != 200)
       throw Exception('setDeviceTargetLux failed: ${r.body}');
+  }
+
+  Future<void> setAdaptiveEnabled(String deviceId, bool enabled) async {
+    final r = await _client.patch(
+      Uri.parse('$baseUrl/devices/$deviceId/adaptive'),
+      headers: _headersJson(),
+      body: jsonEncode({'enabled': enabled}),
+    );
+    if (r.statusCode != 200) {
+      throw Exception('PATCH adaptive failed: ${r.body}');
+    }
+  }
+
+  Future<void> deleteDevice(String id) async {
+    final r = await _client.delete(
+      Uri.parse('$baseUrl/devices/$id'),
+      headers: _headersJson(),
+    );
+    if (r.statusCode != 200 && r.statusCode != 204) {
+      throw Exception('DELETE /devices/$id failed: ${r.body}');
+    }
   }
 
   // ---- Alarms ----

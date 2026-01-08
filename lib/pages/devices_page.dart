@@ -82,6 +82,33 @@ class _DevicesPageState extends State<DevicesPage> {
     }
   }
 
+  Future<void> _addDevice() async {
+    try {
+      final name = await showDialog<String?>(
+        context: context,
+        builder: (_) => const AddDeviceDialog(),
+      );
+
+      if (!mounted) return;
+      if (name == null) return; // annulé ou vide
+
+      setState(() => _busy = true);
+      await _api.createDevice(name);
+      await _reloadDevices();
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lampe "$name" ajoutée')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showError(e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+
   void _showError(Object e) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Erreur: $e')),
@@ -100,6 +127,13 @@ class _DevicesPageState extends State<DevicesPage> {
       appBar: AppBar(
         title: const Text('Mes lampes'),
         actions: [
+          IconButton(
+            tooltip: 'Ajouter une lampe',
+            icon: const Icon(Icons.add),
+            onPressed: () async {
+              await _addDevice();
+            },
+          ),
           PopupMenuButton<String>(
             onSelected: (value) async {
               if (value == 'logout') {
@@ -141,12 +175,25 @@ class _DevicesPageState extends State<DevicesPage> {
           itemCount: _devices.isEmpty ? 1 : _devices.length,
           itemBuilder: (context, i) {
             if (_devices.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(24),
+              return Padding(
+                padding: const EdgeInsets.all(24),
                 child: Center(
-                  child: Text(
-                    'Aucune lampe pour le moment.\nUtilise le menu pour en ajouter.',
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Aucune lampe pour le moment.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.add),
+                        label: const Text('Ajouter une lampe'),
+                        onPressed: () async {
+                          await _addDevice();
+                        },
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -180,13 +227,71 @@ class _DevicesPageState extends State<DevicesPage> {
                 setState(() => _states[d.id] = ns);
               },
               onLongPress: () async {
-                final changed = await Navigator.push<bool>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DeviceSettingsPage(device: d),
+                final choice = await showModalBottomSheet<String>(
+                  context: context,
+                  builder: (ctx) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.settings),
+                          title: const Text('Paramètres'),
+                          onTap: () => Navigator.pop(ctx, 'settings'),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.delete),
+                          title: const Text('Supprimer'),
+                          onTap: () => Navigator.pop(ctx, 'delete'),
+                        ),
+                      ],
+                    ),
                   ),
                 );
-                if (changed == true) await _reloadDevices();
+
+                if (!mounted || choice == null) return;
+
+                if (choice == 'settings') {
+                  final changed = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(builder: (_) => DeviceSettingsPage(device: d)),
+                  );
+                  if (changed == true) await _reloadDevices();
+                  return;
+                }
+
+                if (choice == 'delete') {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Supprimer la lampe ?'),
+                      content: Text('“${d.name}” sera supprimée de ton compte.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Annuler'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Supprimer'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (!mounted || ok != true) return;
+
+                  try {
+                    await _api.deleteDevice(d.id);
+                    await _reloadDevices();
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Lampe “${d.name}” supprimée')),
+                    );
+                  } catch (e) {
+                    if (!mounted) return;
+                    _showError(e);
+                  }
+                }
               },
             );
           },
@@ -202,6 +307,56 @@ class _DevicesPageState extends State<DevicesPage> {
         icon: const Icon(Icons.alarm),
         label: const Text('Alarmes'),
       ),
+    );
+  }
+}
+
+class AddDeviceDialog extends StatefulWidget {
+  const AddDeviceDialog({super.key});
+
+  @override
+  State<AddDeviceDialog> createState() => _AddDeviceDialogState();
+}
+
+class _AddDeviceDialogState extends State<AddDeviceDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Ajouter une lampe'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textInputAction: TextInputAction.done,
+        decoration: const InputDecoration(
+          labelText: 'Nom de la lampe',
+          hintText: 'Ex: Chambre, Salon…',
+        ),
+        onSubmitted: (_) {
+          final v = _controller.text.trim();
+          Navigator.pop(context, v.isEmpty ? null : v);
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Annuler'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final v = _controller.text.trim();
+            Navigator.pop(context, v.isEmpty ? null : v);
+          },
+          child: const Text('Ajouter'),
+        ),
+      ],
     );
   }
 }
