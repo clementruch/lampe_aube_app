@@ -109,7 +109,7 @@ class _DevicePageState extends State<DevicePage> {
             child: SwitchListTile(
               title: const Text('Éclairage adaptatif'),
               subtitle: Text(_adaptiveEnabled
-                  ? 'Actif — réglages manuels verrouillés'
+                  ? 'Actif'
                   : 'Inactif'),
               value: _adaptiveEnabled,
               onChanged: (v) async {

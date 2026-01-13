@@ -100,7 +100,7 @@ class _DeviceSettingsPageState extends State<DeviceSettingsPage> {
                     Slider(
                       value: _targetLux!,
                       min: 20,
-                      max: 500,
+                      max: 1200,
                       divisions: 48,
                       label: '${_targetLux!.round()} lux',
                       onChanged: (v) => setState(() => _targetLux = v),
