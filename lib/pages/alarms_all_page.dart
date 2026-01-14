@@ -184,8 +184,8 @@ class _GlobalAlarmsPageState extends State<GlobalAlarmsPage> {
       }
 
       // 3) Synchronisation "aube" côté lampe (backend /devices/:id/sunrise)
-      //    - si aube activée: on push la prochaine occurrence
-      //    - sinon: on efface sur la lampe concernée
+      //    - si aube activée : on push la prochaine occurrence
+      //    - sinon : on efface sur la lampe concernée
       DateTime? nextOccurrence;
       if (saved.sunrise && saved.enabled && saved.deviceId != null) {
         if (saved.days.isEmpty) {
@@ -198,10 +198,10 @@ class _GlobalAlarmsPageState extends State<GlobalAlarmsPage> {
         }
         await api.setDeviceSunrise(saved.deviceId!, nextOccurrence, saved.durationMinutes);
       } else {
-        // Cas où on désactive l'aube OU on passe en alarme simple :
-        // si l'alarme précédente était une aube liée à une lampe, on nettoie sur CETTE lampe.
+        // Cas où on désactive l'aube ou on passe en alarme simple :
+        // si l'alarme précédente était une aube liée à une lampe, on nettoie sur cette lampe.
         final String? previousDeviceId =
-            existing?.device?.id; // peut être null si création
+            existing?.device?.id;
         if (previousDeviceId != null) {
           await api.setDeviceSunrise(previousDeviceId, null, 0);
         }
@@ -222,7 +222,6 @@ class _GlobalAlarmsPageState extends State<GlobalAlarmsPage> {
     }
   }
 
-  // ---------- UI ----------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -317,8 +316,6 @@ class _GlobalAlarmsPageState extends State<GlobalAlarmsPage> {
   }
 }
 
-/// ================== Bottom-sheet d’édition ==================
-
 class _EditorResult {
   final bool sunrise;
   final Device? device;
@@ -351,11 +348,11 @@ class _AlarmEditorSheet extends StatefulWidget {
 }
 
 class _AlarmEditorSheetState extends State<_AlarmEditorSheet> {
-  bool sunrise = true; // par défaut : aube
+  bool sunrise = true;
   Device? device;
   int hour = 7;
   int minute = 0;
-  Set<int> days = {}; // par défaut: one-shot (aucun jour)
+  Set<int> days = {};
   int duration = 15;
   bool enabled = true;
   final _labelCtrl = TextEditingController();
@@ -459,7 +456,7 @@ class _AlarmEditorSheetState extends State<_AlarmEditorSheet> {
                     ),
                     const SizedBox(height: 12),
 
-                    const Text('Jours (laisse vide pour une seule fois)'),
+                    const Text('Jours (laisser vide pour une seule fois)'),
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 6,

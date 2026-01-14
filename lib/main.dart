@@ -15,7 +15,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   String getBaseUrl() {
   if (Platform.isAndroid) return 'http://10.0.2.2:3000';
-  if (Platform.isIOS)     return 'http://172.20.10.2:3000'; // IP de ton back sur le Hotspot
+  if (Platform.isIOS)     return 'http://172.20.10.2:3000';
   return 'http://172.20.10.2:3000';
 }
 final api = HttpApi(baseUrl: getBaseUrl());

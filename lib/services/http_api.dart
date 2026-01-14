@@ -150,7 +150,7 @@ class HttpApi {
         if (authToken != null) 'Authorization': 'Bearer $authToken',
       };
 
-  // ---- Auth backend ----
+  // Auth backend 
   Future<LoginResult> signup(
       {required String email, required String password}) async {
     final r = await _client.post(
@@ -181,7 +181,7 @@ class HttpApi {
     return LoginResult(success: false, errorMessage: r.body);
   }
 
-  // ---- Device state ----
+  // Device state 
   Future<DeviceState> getDeviceState(String deviceId) async {
     final r = await _client.get(
       Uri.parse('$baseUrl/devices/$deviceId/state'),
@@ -233,7 +233,7 @@ class HttpApi {
     return getDeviceState(deviceId);
   }
 
-  // ---- Telemetry (si l’ESP32 push) ----
+  // Telemetry (si l’ESP32 push) 
   Future<void> pushTelemetry(String deviceId,
       {required double lux, required double temp}) async {
     final r = await _client.post(
@@ -255,7 +255,7 @@ class HttpApi {
     }
   }
 
-  // ---- Devices ----
+  // Devices 
   Future<Device> createDevice(String name) async {
     final r = await _client.post(
       Uri.parse('$baseUrl/devices'),
@@ -366,7 +366,7 @@ class HttpApi {
     }
   }
 
-  // ---- Alarms ----
+  // Alarms 
   Future<List<Alarm>> listAllAlarms() async {
     final r = await _client.get(Uri.parse('$baseUrl/alarms'), headers: _headersJson());
     if (r.statusCode != 200) throw Exception('GET /alarms failed: ${r.body}');

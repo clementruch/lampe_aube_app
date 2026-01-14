@@ -104,7 +104,7 @@ class _DevicePageState extends State<DevicePage> {
           ),
           const SizedBox(height: 12),
 
-          // Adaptative Mode
+          // Mode Adaptatif
           Card(
             child: SwitchListTile(
               title: const Text('Éclairage adaptatif'),
@@ -129,7 +129,7 @@ class _DevicePageState extends State<DevicePage> {
           ),
           const SizedBox(height: 12),
 
-          // Brightness
+          // Luminosité
           _lockWhenAdaptive(
             Card(
               child: Padding(

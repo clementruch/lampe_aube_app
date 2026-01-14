@@ -90,7 +90,7 @@ class _DevicesPageState extends State<DevicesPage> {
       );
 
       if (!mounted) return;
-      if (name == null) return; // annulé ou vide
+      if (name == null) return;
 
       setState(() => _busy = true);
       await _api.createDevice(name);
